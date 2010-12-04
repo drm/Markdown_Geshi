@@ -23,23 +23,29 @@ class MarkdownGeshi_Parser extends MarkdownExtra_Parser {
     function _doCodeBlocks_callback($matches) {
         if(preg_match($this->shebang, $matches[1], $m)) {
             $language = $m[1];
-            $line = (int) (($m[2] > 1) ? $m[2] : 1);
+            $line = (int) (($m[2] > 1) ? $m[2] : 0);
             $codeblock = $m[3];
             $highlighter = new GeSHi($this->outdent(trim($codeblock)), $language);
             $codeblock = $highlighter->parse_code();
-            $ret = '<ol';
             if($line) {
-                $ret .= ' start="' . $line .'"';
+                $ret = '<ol';
+                if($line) {
+                    $ret .= ' start="' . $line .'"';
+                }
+                $ret .= '>';
+                preg_match('!^(\s*<pre[^>]+>)(.*)(</pre>)!s', $codeblock, $m);
+                $ret .= preg_replace(
+                    '/.+(\n|$)/', 
+                    '<li>$0</li>', 
+                    $m[2]
+                );
+                $ret .= '</ol>';
+                
+                $ret = $m[1] . $ret . $m[3];
+            } else {
+                $ret = $codeblock;
             }
-            $ret .= '>';
-            preg_match('!^(\s*<pre[^>]+>)(.*)(</pre>)!s', $codeblock, $m);
-            $ret .= preg_replace(
-                '/.+(\n|$)/', 
-                '<li>$0</li>', 
-                $m[2]
-            );
-            $ret .= '</ol>';
-            return "\n\n" . $this->hashBlock($m[1] . $ret . $m[3]) . "\n\n";
+            return "\n\n" . $this->hashBlock($codeblock) . "\n\n";
         } else {
             return parent::_doCodeBlocks_callback($matches);
         }

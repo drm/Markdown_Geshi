@@ -26,7 +26,7 @@ to start the numbering with.
 Would render the code starting at `while` and starting with line number 
 12.
 
-The line number is optional, so omitting it would start numbering at 1.
+The line number is optional. If omitted, the lines will not be numbered.
 
 If the shebang is omitted, the standard code block handler from the 
 Markdown_Parser class is used.
