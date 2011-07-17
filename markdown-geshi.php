@@ -17,8 +17,17 @@ class MarkdownGeshi_Parser extends MarkdownExtra_Parser {
      * The 'processing instruction' pattern for the code blocks parser.
      * Format is defined as : #!language@linenumber. The @linenumber 
      * part is optional.
+     * 
+     * Optional parameters are allowed past a semicolon.
      */
-    public $shebang = '/^\s*#!(\w+)(?:@(\d+))?\s*\n(.*)/s';
+    public $shebang = '/^
+        \s*
+        \#!(?P<lang>\w+)
+        (?:@(?P<linenumber>\d+))?
+        \s*
+        (?:;\s*(?P<params>.*?)\s*)?\n
+        (?P<code>.*)
+    /sx';
     
     function hasShebang($code) {
         if(preg_match($this->shebang, $code, $m)) {
@@ -44,9 +53,9 @@ class MarkdownGeshi_Parser extends MarkdownExtra_Parser {
     }
         
     function _doGeshi($shebangMatch) {
-        $language = $shebangMatch[1];
-        $line = (int) (($shebangMatch[2] > 1) ? $shebangMatch[2] : 0);
-        $codeblock = $shebangMatch[3];
+        $language = $shebangMatch['lang'];
+        $line = (int) (($shebangMatch['linenumber'] > 1) ? $shebangMatch['linenumber'] : 0);
+        $codeblock = $shebangMatch['code'];
         
         $highlighter = new GeSHi($this->outdent(trim($codeblock)), $language);
         $highlighted = $highlighter->parse_code();
@@ -69,7 +78,31 @@ class MarkdownGeshi_Parser extends MarkdownExtra_Parser {
         } else {
             $ret = $highlighted;
         }
+        if($shebangMatch['params']) {
+            $ret = $this->_processGeshiParams($ret,  $shebangMatch['params']);
+        }
         
         return "\n\n" . $this->hashBlock($ret) . "\n\n";
+    }
+    
+    
+    function _processGeshiParams($highlighted, $params) {
+        foreach(explode(',', $params) as $keyValuePair) {
+            @list($key, $value) = array_map('trim', explode('=', $keyValuePair));
+            if($key && $value) {
+                switch($key) {
+                    case 'gist':
+                        $highlighted = 
+                            sprintf(
+                                '<cite class="gist">(GIST: <a href="https://gist.github.com/%1$d" target="_blank">%1$d</a>)</cite>', 
+                                $value
+                            )
+                            . $highlighted
+                        ;
+                        break;
+                }
+            }
+        }
+        return $highlighted;
     }
 }
